@@ -1,3 +1,4 @@
+//GameObject classes
 class GameObject {
   constructor(x, y) {
     this.x = x;
@@ -39,6 +40,71 @@ class Enemy extends GameObject {
       }
     }, 300);
   }
+}
+
+//event handling
+class EventEmitter {
+  constructor() {
+    this.listeners = {};
+  }
+
+  on(message, listener) {
+    if (!this.listeners[message]) {
+      this.listeners[message] = [];
+    }
+    this.listeners[message].push(listener);
+  }
+}
+const Messages = {
+  KEY_EVENT_UP: "KEY_EVENT_UP",
+  KEY_EVENT_DOWN: "KEY_EVENT_DOWN",
+  KEY_EVENT_LEFT: "KEY_EVENT_LEFT",
+  KEY_EVENT_RIGHT: "KEY_EVENT_RIGHT",
+};
+
+const onKeydown = function (e) {
+  console.log(e.keycode);
+  //block default behaviour on arrow keys and space bar
+  switch (e.keycode) {
+    case 37:
+    case 39:
+    case 38:
+    case 40:
+    case 32:
+      e.preventDefault();
+      break;
+    default:
+      break;
+  }
+};
+window.addEventListener("keydown", onKeydown);
+
+let playerImg,
+  enemyImg,
+  laserImg,
+  canvas,
+  ctx,
+  gameObjects = [],
+  player,
+  eventEmitter = new EventEmitter();
+
+function initGame() {
+  gameObjects = [];
+  createEnemies();
+  createPlayer();
+
+  eventEmitter.on(Messages.KEY_EVENT_UP, () => {
+    player.y -= 5;
+  });
+  eventEmitter.on(Messages.KEY_EVENT_DOWN, () => {
+    player.y += 5;
+  });
+  eventEmitter.on(Messages.KEY_EVENT_LEFT, () => {
+    player.x -= 5;
+  });
+  eventEmitter.on(Messages.KEY_EVENT_RIGHT, () => {
+    player.x += 5;
+  });
 }
 
 function loadTexture(path) {
