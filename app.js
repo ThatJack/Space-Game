@@ -1,87 +1,49 @@
-//game objects
-const gameObject = {
-  x: 0,
-  y: 0,
-  type: "",
-};
-
-const moveable = {
-  moveTo(x, y) {
-    this.x = x;
-    this.y = y;
-  },
-};
-
-const moveableObject = { ...gameObject, ...moveable };
-
-function createHero(x, y) {
-  return {
-    ...moveableObject,
-    x,
-    y,
-    type: "Hero",
-  };
+function loadTexture(path) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.src = path;
+    img.onload = () => {
+      resolve(img);
+    };
+    img.onerror = () => {
+      reject(new Error("Failed to load image: ${path}"));
+    };
+  });
 }
 
-function createStatic(x, y, type) {
-  return {
-    ...gameObject,
-    x,
-    y,
-    type,
-  };
-}
+function createEnemies(ctx, canvas, enemyImg) {
+  const ENEMY_TOTAL = 5;
+  const ENEMY_SPACING = 98;
+  const FORMATION_WIDTH = ENEMY_TOTAL * ENEMY_SPACING;
+  const START_X = (canvas.width - FORMATION_WIDTH) / 2;
+  const STOP_X = START_X + FORMATION_WIDTH;
 
-//event system
-class EventEmitter {
-  constructor() {
-    this.listeners = {};
-  }
-
-  //register listener for specific message type
-  on(message, listener) {
-    if (!this.listeners[message]) {
-      this.listeners[message] = [];
-    }
-    this.listeners[message].push(listener);
-  }
-
-  //send message to all registered listeners
-  emit(message, payload = null) {
-    if (this.listeners[message]) {
-      this.listeners[message].forEach((listener) => {
-        listener(message, payload);
-      });
+  for (let x = START_X; x < STOP_X; x += ENEMY_SPACING) {
+    for (let y = 0; y < 50 * 5; y += 50) {
+      ctx.drawImage(enemyImg, x, y);
     }
   }
 }
 
-const Messages = {
-  HERO_MOVE_LEFT: "HERO_MOVE_LEFT",
-  HERO_MOVE_RIGHT: "HERO_MOVE_RIGHT",
-  ENEMY_SPOTTED: "ENEMY_SPOTTED",
+window.onload = async () => {
+  const canvas = document.getElementById("gameCanvas");
+  const ctx = canvas.getContext("2d");
+
+  //load textures
+  const enemyImg = await loadTexture("assets/enemyShip.png");
+  const playerImg = await loadTexture("assets/player.png");
+
+  //draw
+  //bg
+  ctx.fillStyle = "black";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  //player
+  ctx.drawImage(
+    playerImg,
+    canvas.width / 2 - 45,
+    canvas.height - canvas.height / 4,
+  );
+
+  createEnemies(ctx, canvas, enemyImg);
 };
-
-const eventEmitter = new EventEmitter();
-const hero = createHero(0, 0);
-
-eventEmitter.on(Messages.HERO_MOVE_LEFT, () => {
-  hero.moveTo(hero.x - 5, hero.y);
-  console.log("Hero moved to ${hero.x}, ${hero.y}");
-});
-
-eventEmitter.on(Messages.HERO_MOVE_RIGHT, () => {
-  hero.moveTo(hero.x + 5, hero.y);
-  console.log("Hero moved to ${hero.x}, ${hero.y}");
-});
-
-window.addEventListener("keydown", (event) => {
-  switch (event.key) {
-    case "A":
-      eventEmitter.emit(Messages.HERO_MOVE_LEFT);
-      break;
-    case "D":
-      eventEmitter.emit(Messages.HERO_MOVE_RIGHT);
-      break;
-  }
-});
