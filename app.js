@@ -1,3 +1,46 @@
+class GameObject {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.dead = false;
+    this.type = "";
+    this.width = 0;
+    this.height = 0;
+    this.img = undefined;
+  }
+
+  draw(ctx) {
+    ctx.drawImage(this.img, this.x, this.y, this.width, this.height);
+  }
+}
+
+class Player extends GameObject {
+  constructor(x, y) {
+    super(x, y);
+    this.width = 98;
+    this.height = 75;
+    this.type = "Hero";
+    this.speed = 5;
+  }
+}
+
+class Enemy extends GameObject {
+  constructor(x, y) {
+    super(x, y);
+    this.width = 98;
+    this.height = 50;
+    this.type = "Enemy";
+    const id = setInterval(() => {
+      if (this.y < canvas.height - this.height) {
+        this.y += 5;
+      } else {
+        console.log("Stopped at", this.y);
+        clearInterval(id);
+      }
+    }, 300);
+  }
+}
+
 function loadTexture(path) {
   return new Promise((resolve, reject) => {
     const img = new Image();
