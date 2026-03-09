@@ -1,3 +1,16 @@
+function loadTexture(path) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.src = path;
+    img.onload = () => {
+      resolve(img);
+    };
+    img.onerror = () => {
+      reject(new Error("Failed to load image: ${path}"));
+    };
+  });
+}
+
 //GameObject classes
 class GameObject {
   constructor(x, y) {
@@ -25,6 +38,12 @@ class Player extends GameObject {
   }
 }
 
+function createPlayer() {
+  player = new Player(canvas.width / 2 - 45, canvas.height - canvas.height / 4);
+  player.img = playerImg;
+  gameObjects.push(player);
+}
+
 class Enemy extends GameObject {
   constructor(x, y) {
     super(x, y);
@@ -42,6 +61,10 @@ class Enemy extends GameObject {
   }
 }
 
+function drawGameObjects(ctx) {
+  gameObjects.forEach((obj) => obj.draw(ctx));
+}
+
 //event handling
 class EventEmitter {
   constructor() {
@@ -54,6 +77,13 @@ class EventEmitter {
     }
     this.listeners[message].push(listener);
   }
+
+  emit(message, payload = null) {
+    if (this.listeners[message]) {
+      this.listeners[message].forEach((l) => l(message, payload));
+      console.log("emitted message event: ", message);
+    }
+  }
 }
 const Messages = {
   KEY_EVENT_UP: "KEY_EVENT_UP",
@@ -63,9 +93,8 @@ const Messages = {
 };
 
 const onKeydown = function (e) {
-  console.log(e.keycode);
   //block default behaviour on arrow keys and space bar
-  switch (e.keycode) {
+  switch (e.code) {
     case 37:
     case 39:
     case 38:
@@ -79,6 +108,19 @@ const onKeydown = function (e) {
 };
 window.addEventListener("keydown", onKeydown);
 
+window.addEventListener("keyup", (evt) => {
+  if (evt.code === "KeyW") {
+    eventEmitter.emit(Messages.KEY_EVENT_UP);
+  } else if (evt.code === "KeyS") {
+    eventEmitter.emit(Messages.KEY_EVENT_DOWN);
+  }
+  if (evt.code === "KeyA") {
+    eventEmitter.emit(Messages.KEY_EVENT_LEFT);
+  } else if (evt.code === "KeyD") {
+    eventEmitter.emit(Messages.KEY_EVENT_RIGHT);
+  }
+});
+
 let playerImg,
   enemyImg,
   laserImg,
@@ -90,7 +132,7 @@ let playerImg,
 
 function initGame() {
   gameObjects = [];
-  createEnemies();
+  createEnemies(ctx, canvas, enemyImg);
   createPlayer();
 
   eventEmitter.on(Messages.KEY_EVENT_UP, () => {
@@ -107,19 +149,6 @@ function initGame() {
   });
 }
 
-function loadTexture(path) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.src = path;
-    img.onload = () => {
-      resolve(img);
-    };
-    img.onerror = () => {
-      reject(new Error("Failed to load image: ${path}"));
-    };
-  });
-}
-
 function createEnemies(ctx, canvas, enemyImg) {
   const ENEMY_TOTAL = 5;
   const ENEMY_SPACING = 98;
@@ -129,30 +158,28 @@ function createEnemies(ctx, canvas, enemyImg) {
 
   for (let x = START_X; x < STOP_X; x += ENEMY_SPACING) {
     for (let y = 0; y < 50 * 5; y += 50) {
-      ctx.drawImage(enemyImg, x, y);
+      const enemy = new Enemy(x, y);
+      enemy.img = enemyImg;
+      gameObjects.push(enemy);
     }
   }
 }
 
 window.onload = async () => {
-  const canvas = document.getElementById("gameCanvas");
-  const ctx = canvas.getContext("2d");
+  canvas = document.getElementById("gameCanvas");
+  ctx = canvas.getContext("2d");
 
   //load textures
-  const enemyImg = await loadTexture("assets/enemyShip.png");
-  const playerImg = await loadTexture("assets/player.png");
+  enemyImg = await loadTexture("assets/enemyShip.png");
+  playerImg = await loadTexture("assets/player.png");
+  laserImg = await loadTexture("assets/laserRed.png");
 
-  //draw
-  //bg
-  ctx.fillStyle = "black";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  //player
-  ctx.drawImage(
-    playerImg,
-    canvas.width / 2 - 45,
-    canvas.height - canvas.height / 4,
-  );
-
-  createEnemies(ctx, canvas, enemyImg);
+  //game setup and loop
+  initGame();
+  const gameLoopId = setInterval(() => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "black";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    drawGameObjects(ctx);
+  }, 100);
 };
