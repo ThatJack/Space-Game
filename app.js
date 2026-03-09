@@ -70,12 +70,12 @@ function updateGameObjects() {
     });
   });
 
-  enemies.forEach(enemy => {
+  enemies.forEach((enemy) => {
     const playerRect = player.rectFromGameObject();
     if (intersectRect(playerRect, enemy.rectFromGameObject())) {
-      eventEmitter.emit(Messages.COLLISION_ENEMY_PLAYER, {enemy});
+      eventEmitter.emit(Messages.COLLISION_ENEMY_PLAYER, { enemy });
     }
-  })
+  });
 
   //remove dead objects
   gameObjects = gameObjects.filter((obj) => !obj.dead);
@@ -93,6 +93,7 @@ class Player extends GameObject {
     this.points = 0;
   }
 
+  //weapon controls
   fire() {
     gameObjects.push(new Laser(this.x + 45, this.y - 10));
     this.cooldown = 500;
@@ -108,6 +109,18 @@ class Player extends GameObject {
 
   canFire() {
     return this.cooldown === 0;
+  }
+
+  //life system
+  decrementLife() {
+    this.life--;
+    if (this.life === 0) {
+      this.dead = true;
+    }
+  }
+
+  incrementPoints() {
+    this.points += 100;
   }
 }
 
@@ -259,6 +272,12 @@ function initGame() {
   eventEmitter.on(Messages.COLLISION_ENEMY_LASER, (_, { first, second }) => {
     first.dead = true;
     second.dead = true;
+    player.incrementPoints();
+  });
+
+  eventEmitter.on(Messages.COLLISION_ENEMY_PLAYER, (_, { enemy }) => {
+    enemy.dead = true;
+    player.decrementLife();
   });
 }
 
@@ -283,9 +302,7 @@ function createEnemies(ctx, canvas, enemyImg) {
 function drawLife() {
   const START_POS = canvas.width - 180;
   for (let i = 0; i < player.life; i++) {
-    ctx.drawImage(lifeImg,
-      START_POS + (45 * (i + 1)),
-      canvas.height - 37);
+    ctx.drawImage(lifeImg, START_POS + 45 * (i + 1), canvas.height - 37);
   }
 }
 
