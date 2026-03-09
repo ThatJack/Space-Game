@@ -51,10 +51,12 @@ function drawGameObjects(ctx) {
   gameObjects.forEach((obj) => obj.draw(ctx));
 }
 
+//collision detection
 function updateGameObjects() {
   const enemies = gameObjects.filter((obj) => obj.type === "Enemy");
   const lasers = gameObjects.filter((obj) => obj.type === "Laser");
 
+  //laser/enemy collision
   lasers.forEach((laser) => {
     enemies.forEach((enemy) => {
       if (
@@ -68,6 +70,13 @@ function updateGameObjects() {
     });
   });
 
+  enemies.forEach(enemy => {
+    const playerRect = player.rectFromGameObject();
+    if (intersectRect(playerRect, enemy.rectFromGameObject())) {
+      eventEmitter.emit(Messages.COLLISION_ENEMY_PLAYER, {enemy});
+    }
+  })
+
   //remove dead objects
   gameObjects = gameObjects.filter((obj) => !obj.dead);
 }
@@ -80,6 +89,8 @@ class Player extends GameObject {
     this.type = "Hero";
     this.speed = 5;
     this.cooldown = 0;
+    this.life = 3;
+    this.points = 0;
   }
 
   fire() {
@@ -212,6 +223,7 @@ window.addEventListener("keyup", (evt) => {
 let playerImg,
   enemyImg,
   laserImg,
+  lifeImg,
   canvas,
   ctx,
   gameObjects = [],
@@ -267,6 +279,27 @@ function createEnemies(ctx, canvas, enemyImg) {
   }
 }
 
+//life and point system and ui
+function drawLife() {
+  const START_POS = canvas.width - 180;
+  for (let i = 0; i < player.life; i++) {
+    ctx.drawImage(lifeImg,
+      START_POS + (45 * (i + 1)),
+      canvas.height - 37);
+  }
+}
+
+function drawPoints() {
+  ctx.font = "30px Arial";
+  ctx.fillStyle = "red";
+  ctx.textAlign = "left";
+  drawText("Points: " + player.points, 10, canvas.height - 20);
+}
+
+function drawText(message, x, y) {
+  ctx.fillText(message, x, y);
+}
+
 window.onload = async () => {
   canvas = document.getElementById("gameCanvas");
   ctx = canvas.getContext("2d");
@@ -275,6 +308,7 @@ window.onload = async () => {
   enemyImg = await loadTexture("assets/enemyShip.png");
   playerImg = await loadTexture("assets/player.png");
   laserImg = await loadTexture("assets/laserRed.png");
+  lifeImg = await loadTexture("assets/life.png");
 
   //game setup and loop
   initGame();
@@ -284,5 +318,7 @@ window.onload = async () => {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     drawGameObjects(ctx);
     updateGameObjects();
+    drawPoints();
+    drawLife();
   }, 100);
 };
