@@ -166,7 +166,7 @@ class Enemy extends GameObject {
       if (this.y < canvas.height - this.height) {
         this.y += 5;
       } else {
-        endGame(true);
+        endGame(false);
         clearInterval(id);
       }
     }, 300);
@@ -322,6 +322,7 @@ function initGame() {
     first.dead = true;
     second.dead = true;
     player.incrementPoints();
+    playSfx(explosionSound);
 
     if (isEnemiesDead()) {
       eventEmitter.emit(Messages.GAME_END_WIN);
@@ -331,6 +332,7 @@ function initGame() {
   eventEmitter.on(Messages.COLLISION_ENEMY_PLAYER, (_, { enemy }) => {
     enemy.dead = true;
     player.decrementLife();
+    playSfx(explosionSound);
 
     if (isPlayerDead()) {
       eventEmitter.emit(Messages.GAME_END_LOSS);
