@@ -131,6 +131,10 @@ function createPlayer() {
   gameObjects.push(player);
 }
 
+function isPlayerDead() {
+  return player.life <= 0;
+}
+
 class Laser extends GameObject {
   constructor(x, y) {
     super(x, y);
@@ -138,6 +142,7 @@ class Laser extends GameObject {
     this.height = 33;
     this.type = "Laser";
     this.img = laserImg;
+    playSfx(laserSound);
 
     let id = setInterval(() => {
       if (this.y > 0) {
@@ -161,11 +166,35 @@ class Enemy extends GameObject {
       if (this.y < canvas.height - this.height) {
         this.y += 5;
       } else {
-        console.log("Stopped at", this.y);
+        endGame(true);
         clearInterval(id);
       }
     }, 300);
   }
+}
+
+function createEnemies(ctx, canvas, enemyImg) {
+  const ENEMY_TOTAL = 5;
+  const ENEMY_SPACING = 98;
+  const FORMATION_WIDTH = ENEMY_TOTAL * ENEMY_SPACING;
+  const START_X = (canvas.width - FORMATION_WIDTH) / 2;
+  const STOP_X = START_X + FORMATION_WIDTH;
+
+  //create pattern of enemies
+  for (let x = START_X; x < STOP_X; x += ENEMY_SPACING) {
+    for (let y = 0; y < 50 * 5; y += 50) {
+      const enemy = new Enemy(x, y);
+      enemy.img = enemyImg;
+      gameObjects.push(enemy);
+    }
+  }
+}
+
+function isEnemiesDead() {
+  const enemies = gameObjects.filter(
+    (obj) => obj.type === "Enemy" && !obj.dead,
+  );
+  return enemies.length === 0;
 }
 
 //event handling
@@ -186,8 +215,12 @@ class EventEmitter {
   emit(message, payload = null) {
     if (this.listeners[message]) {
       this.listeners[message].forEach((l) => l(message, payload));
-      console.log("emitted message event: ", message);
+      //console.log("emitted message event: ", message);
     }
+  }
+
+  clear() {
+    this.listeners = {};
   }
 }
 const Messages = {
@@ -196,8 +229,11 @@ const Messages = {
   KEY_EVENT_LEFT: "KEY_EVENT_LEFT",
   KEY_EVENT_RIGHT: "KEY_EVENT_RIGHT",
   KEY_EVENT_SPACE: "KEY_EVENT_SPACE",
+  KEY_EVENT_ENTER: "KEY_EVENT_ENTER",
   COLLISION_ENEMY_LASER: "COLLISION_ENEMY_LASER",
   COLLISION_ENEMY_PLAYER: "COLLISION_ENEMY_PLAYER",
+  GAME_END_WIN: "GAME_END_WIN",
+  GAME_END_LOSS: "GAME_END_LOSS",
 };
 
 const onKeydown = function (e) {
@@ -212,6 +248,9 @@ const onKeydown = function (e) {
       break;
     default:
       break;
+  }
+  if (e.code === "Enter") {
+    eventEmitter.emit(Messages.KEY_EVENT_ENTER);
   }
 };
 window.addEventListener("keydown", onKeydown);
@@ -233,6 +272,15 @@ window.addEventListener("keyup", (evt) => {
   }
 });
 
+//audio
+const laserSound = new Audio("assets/laser.wav");
+const explosionSound = new Audio("assets/explosion.wav");
+
+function playSfx(sfx) {
+  sfx.currentTime = 0;
+  sfx.play();
+}
+
 let playerImg,
   enemyImg,
   laserImg,
@@ -241,6 +289,7 @@ let playerImg,
   ctx,
   gameObjects = [],
   player,
+  gameLoopId,
   eventEmitter = new EventEmitter();
 
 function initGame() {
@@ -273,29 +322,69 @@ function initGame() {
     first.dead = true;
     second.dead = true;
     player.incrementPoints();
+
+    if (isEnemiesDead()) {
+      eventEmitter.emit(Messages.GAME_END_WIN);
+    }
   });
 
   eventEmitter.on(Messages.COLLISION_ENEMY_PLAYER, (_, { enemy }) => {
     enemy.dead = true;
     player.decrementLife();
+
+    if (isPlayerDead()) {
+      eventEmitter.emit(Messages.GAME_END_LOSS);
+      return;
+    }
+    if (isEnemiesDead()) {
+      eventEmitter.emit(Messages.GAME_END_WIN);
+    }
+  });
+
+  //game win/loss
+  eventEmitter.on(Messages.GAME_END_WIN, () => {
+    endGame(true);
+  });
+  eventEmitter.on(Messages.GAME_END_LOSS, () => {
+    endGame(false);
+  });
+  eventEmitter.on(Messages.KEY_EVENT_ENTER, () => {
+    resetGame();
   });
 }
 
-function createEnemies(ctx, canvas, enemyImg) {
-  const ENEMY_TOTAL = 5;
-  const ENEMY_SPACING = 98;
-  const FORMATION_WIDTH = ENEMY_TOTAL * ENEMY_SPACING;
-  const START_X = (canvas.width - FORMATION_WIDTH) / 2;
-  const STOP_X = START_X + FORMATION_WIDTH;
+function endGame(win) {
+  clearInterval(gameLoopId);
 
-  //create pattern of enemies
-  for (let x = START_X; x < STOP_X; x += ENEMY_SPACING) {
-    for (let y = 0; y < 50 * 5; y += 50) {
-      const enemy = new Enemy(x, y);
-      enemy.img = enemyImg;
-      gameObjects.push(enemy);
+  setTimeout(() => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "black";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (win) {
+      displayMessage("Victory!!\n-Press [Enter] to begin a new game-", "green");
+    } else {
+      displayMessage("You Died!!\n-Press [Enter] to begin a new game-");
     }
+  }, 200);
+}
+
+function resetGame() {
+  if (gameLoopId) {
+    clearInterval(gameLoopId);
+    eventEmitter.clear();
+    initGame();
+    gameLoopId = setInterval(gameLoop);
   }
+}
+
+function gameLoop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "black";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  drawGameObjects(ctx);
+  updateGameObjects();
+  drawPoints();
+  drawLife();
 }
 
 //life and point system and ui
@@ -310,11 +399,14 @@ function drawPoints() {
   ctx.font = "30px Arial";
   ctx.fillStyle = "red";
   ctx.textAlign = "left";
-  drawText("Points: " + player.points, 10, canvas.height - 20);
+  ctx.fillText("Points: " + player.points, 10, canvas.height - 20);
 }
 
-function drawText(message, x, y) {
-  ctx.fillText(message, x, y);
+function displayMessage(message, color = "red") {
+  ctx.font = "30px Arial";
+  ctx.fillStyle = color;
+  ctx.textAlign = "center";
+  ctx.fillText(message, canvas.width / 2, canvas.height / 2);
 }
 
 window.onload = async () => {
@@ -329,13 +421,5 @@ window.onload = async () => {
 
   //game setup and loop
   initGame();
-  const gameLoopId = setInterval(() => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "black";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    drawGameObjects(ctx);
-    updateGameObjects();
-    drawPoints();
-    drawLife();
-  }, 100);
+  gameLoopId = setInterval(gameLoop, 100);
 };
