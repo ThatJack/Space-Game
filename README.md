@@ -2,7 +2,7 @@ Space Invaders style game made in JavaScript from the Microsoft Web-dev tutorial
 For COMP-2800 Software Development Assignment 2
 
 To play:
-follow this link: https://glorious-barnacle-q75766rrwvwxc9wq5-5000.app.github.dev/
+follow this link: https://2800spacegame.z13.web.core.windows.net/
 
 Controls: 
 use WASD to move
