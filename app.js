@@ -89,7 +89,7 @@ class Player extends GameObject {
     this.width = 98;
     this.height = 75;
     this.type = "Hero";
-    this.speed = 5;
+    this.speed = 25;
     this.cooldown = 0;
     this.life = 3;
     this.points = 0;
