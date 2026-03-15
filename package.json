@@ -1,0 +1,13 @@
+{
+    "name": "space-invaders",
+    "version": "1.0.0",
+    "description": "Space Invaders inspired game made for assignment 2 in COMP2800 Software Development.",
+    "main": "app.js",
+    "scripts": {
+        "start": "npx http-server -c-1 -p 5000",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "keywords": [],
+    "author": "ThatJack",
+    "license": "ISC"
+}

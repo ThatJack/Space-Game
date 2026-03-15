@@ -1,3 +1,5 @@
+let gameLoopId;
+
 //load image texture
 function loadTexture(path) {
   return new Promise((resolve, reject) => {
@@ -166,7 +168,6 @@ class Enemy extends GameObject {
       if (this.y < canvas.height - this.height) {
         this.y += 5;
       } else {
-        endGame(false);
         clearInterval(id);
       }
     }, 300);
@@ -289,7 +290,6 @@ let playerImg,
   ctx,
   gameObjects = [],
   player,
-  gameLoopId,
   eventEmitter = new EventEmitter();
 
 function initGame() {
